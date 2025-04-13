@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Knapsack 0/1 Interaktif - Input Manual</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; margin-bottom: 20px; }
+    th, td {
+      border: 1px solid #aaa;
+      padding: 6px 10px;
+      text-align: center;
+    }
+    th { background-color: #f0f0f0; }
+    .highlight { background-color: #ffe599; font-weight: bold; }
+    button { padding: 8px 16px; font-size: 16px; margin: 5px 5px 10px 0; }
+    .status { margin: 10px 0; font-size: 16px; }
+    input[type="number"], input[type="text"] {
+      padding: 5px;
+      width: 80px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Input Data Knapsack 0/1</h2>
+
+  <form id="inputForm">
+    <table id="itemTable">
+      <thead>
+        <tr>
+          <th>Nama</th><th>Value</th><th>Weight</th><th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="itemBody">
+        <!-- Baris default akan diisi oleh JS -->
+      </tbody>
+    </table>
+    <button type="button" onclick="addRow()">Tambah Barang</button><br>
+    Kapasitas: <input type="number" id="capacityInput" value="10" min="1" required>
+    <button type="button" onclick="startVisualization()">Mulai Visualisasi</button>
+  </form>
+
+  <div class="status" id="status">Masukkan data, lalu klik "Mulai Visualisasi".</div>
+  <button onclick="nextStep()">Next Step</button>
+
+  <div id="tables"></div>
+
+  <script>
+    let items = [];
+    let capacity = 10;
+    let dp = [], included = [];
+    let i = 0, w = 0;
+    let started = false;
+
+    const defaultItems = [
+      { name: "A", value: 6, weight: 5 },
+      { name: "B", value: 3, weight: 2 },
+      { name: "C", value: 8, weight: 6 },
+      { name: "D", value: 4, weight: 3 }
+    ];
+
+    function addRow(name = "", value = "", weight = "") {
+      const tbody = document.getElementById("itemBody");
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td><input type="text" value="${name}" required></td>
+        <td><input type="number" value="${value}" min="0" required></td>
+        <td><input type="number" value="${weight}" min="0" required></td>
+        <td><button type="button" onclick="this.parentElement.parentElement.remove()">Hapus</button></td>
+      `;
+      tbody.appendChild(row);
+    }
+
+    function loadDefaultRows() {
+      for (const item of defaultItems) {
+        addRow(item.name, item.value, item.weight);
+      }
+    }
+
+    function collectDataFromForm() {
+      items = [];
+      const rows = document.querySelectorAll("#itemBody tr");
+      for (const row of rows) {
+        const inputs = row.querySelectorAll("input");
+        const name = inputs[0].value.trim();
+        const value = parseInt(inputs[1].value);
+        const weight = parseInt(inputs[2].value);
+        if (name && !isNaN(value) && !isNaN(weight)) {
+          items.push({ name, value, weight });
+        }
+      }
+      capacity = parseInt(document.getElementById("capacityInput").value);
+    }
+
+    function initializeDP() {
+      const n = items.length;
+      dp = Array.from({ length: n + 1 }, () => Array(capacity + 1).fill(0));
+      included = Array.from({ length: n + 1 }, () => Array(capacity + 1).fill([]));
+      i = 0;
+      w = 0;
+    }
+
+    function generateTable(title, data, highlightRow, highlightCol, isItems = false) {
+      let html = `<table><caption><strong>${title}</strong></caption><thead><tr><th>i \\ w</th>`;
+      for (let col = 0; col <= capacity; col++) html += `<th>${col}</th>`;
+      html += `</tr></thead><tbody>`;
+      for (let row = 0; row <= items.length; row++) {
+        html += `<tr><th>${row}</th>`;
+        for (let col = 0; col <= capacity; col++) {
+          const val = isItems ? data[row][col].join(", ") : data[row][col];
+          const isHighlight = (row === highlightRow && col === highlightCol);
+          html += `<td class="${isHighlight ? 'highlight' : ''}">${val}</td>`;
+        }
+        html += `</tr>`;
+      }
+      html += `</tbody></table>`;
+      return html;
+    }
+
+    function updateTables() {
+      const tableHtml = generateTable("Tabel DP (Nilai Maksimal)", dp, i, w, false) +
+                        generateTable("Tabel Barang yang Dipilih", included, i, w, true);
+      document.getElementById("tables").innerHTML = tableHtml;
+      const status = document.getElementById("status");
+      if (!started) {
+        status.textContent = "Klik 'Mulai Visualisasi' untuk memulai.";
+      } else if (i > items.length) {
+        status.textContent = `Selesai! Nilai Maksimal: ${dp[items.length][capacity]}, Barang Terpilih: ${included[items.length][capacity].join(", ")}`;
+      } else {
+        const itemName = items[i - 1]?.name || "-";
+        status.textContent = `Mengisi dp[${i}][${w}] — ${i === 0 || w === 0 ? "(basis)" : `Item: ${itemName}`}`;
+      }
+    }
+
+    function nextStep() {
+      if (!started || i > items.length) return;
+
+      if (i === 0 || w === 0) {
+        dp[i][w] = 0;
+        included[i][w] = [];
+      } else if (items[i - 1].weight <= w) {
+        const includeValue = items[i - 1].value + dp[i - 1][w - items[i - 1].weight];
+        const excludeValue = dp[i - 1][w];
+        if (includeValue > excludeValue) {
+          dp[i][w] = includeValue;
+          included[i][w] = [...included[i - 1][w - items[i - 1].weight], items[i - 1].name];
+        } else {
+          dp[i][w] = excludeValue;
+          included[i][w] = [...included[i - 1][w]];
+        }
+      } else {
+        dp[i][w] = dp[i - 1][w];
+        included[i][w] = [...included[i - 1][w]];
+      }
+
+      updateTables();
+      w++;
+      if (w > capacity) {
+        w = 0;
+        i++;
+      }
+    }
+
+    function startVisualization() {
+      collectDataFromForm();
+      if (items.length === 0 || isNaN(capacity)) {
+        alert("Data tidak valid.");
+        return;
+      }
+      initializeDP();
+      started = true;
+      updateTables();
+    }
+
+    // Load default rows on page load
+    loadDefaultRows();
+    updateTables();
+  </script>
+
+</body>
+</html>
