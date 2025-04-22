@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualisasi MST dengan Algoritma Kruskal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            gap: 20px;
+        }
+        
+        #graph-container {
+            flex: 2;
+            border: 1px solid #ccc;
+            height: 600px;
+            position: relative;
+            background-color: #f9f9f9;
+        }
+
+        #next-step-kruskal {
+            background-color: #888;
+        }
+
+        #next-step-prim{
+            background-color: #888;
+        }
+        
+        .controls {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+        }
+        
+        .node {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: move;
+            user-select: none;
+            z-index: 2;
+        }
+        
+        .edge {
+            position: absolute;
+            height: 2px;
+            background-color: #888;
+            transform-origin: 0 0;
+            z-index: 1;
+        }
+        
+        .edge-label {
+            position: absolute;
+            background-color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .mst-edge {
+            background-color: #FF5722;
+            height: 3px;
+        }
+        
+        button {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        input, select {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        h2, h3 {
+            color: #333;
+        }
+        
+        .algorithm-tabs {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        
+        .algorithm-tab {
+            padding: 10px 20px;
+            background-color: #ddd;
+            cursor: pointer;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .algorithm-tab.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Visualisasi MST dengan Algoritma Kruskal</h1>
+    
+    <div class="container">
+        <div id="graph-container"></div>
+        
+        <div class="controls">
+            <div class="algorithm-tabs">
+                <div class="algorithm-tab active" id="tab-prim">Prim</div>
+                <div class="algorithm-tab" id="tab-kruskal">Kruskal</div>
+            </div>
+            
+            <h2>Kontrol Graf</h2>
+            
+            <div class="form-group">
+                <h3>Tambah Node</h3>
+                <label for="node-id">ID Node:</label>
+                <input type="text" id="node-id" placeholder="A, B, C, ...">
+                <button id="add-node">Tambah Node</button>
+            </div>
+            
+            <div class="form-group">
+                <h3>Tambah Edge</h3>
+                <label for="from-node">Dari Node:</label>
+                <select id="from-node"></select>
+                
+                <label for="to-node">Ke Node:</label>
+                <select id="to-node"></select>
+                
+                <label for="edge-weight">Bobot:</label>
+                <input type="number" id="edge-weight" min="1" value="1">
+                
+                <button id="add-edge">Tambah Edge</button>
+            </div>
+            
+            <div class="form-group" id="prim-controls">
+                <h3>Algoritma Prim</h3>
+                <label for="start-node">Node Awal:</label>
+                <select id="start-node"></select>
+                <button id="run-prim">Jalankan Prim</button>
+                <button id="next-step-prim" disabled>Next Step</button>
+            </div>
+            
+            <div class="form-group" id="kruskal-controls" style="display: none;">
+                <h3>Algoritma Kruskal</h3>
+                <button id="run-kruskal">Jalankan Kruskal</button>
+                <button id="next-step-kruskal" disabled>Next Step</button>
+            </div>
+            
+            <button id="reset-graph">Reset Graf</button>
+            
+            <div class="form-group">
+                <h3>Informasi MST</h3>
+                <div id="mst-info"></div>
+                <div id="mst-steps"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data struktur untuk graf
+        let nodes = [];
+        let edges = [];
+        let mstEdges = [];
+        let nodeCounter = 0;
+        let isRunningAlgorithm = false;
+        
+        // DOM elements
+        const graphContainer = document.getElementById('graph-container');
+        const nodeIdInput = document.getElementById('node-id');
+        const fromNodeSelect = document.getElementById('from-node');
+        const toNodeSelect = document.getElementById('to-node');
+        const edgeWeightInput = document.getElementById('edge-weight');
+        const startNodeSelect = document.getElementById('start-node');
+        const mstInfoDiv = document.getElementById('mst-info');
+        const mstStepsDiv = document.getElementById('mst-steps');
+        
+        // Event listeners
+        document.getElementById('add-node').addEventListener('click', addNode);
+        document.getElementById('add-edge').addEventListener('click', addEdge);
+        document.getElementById('run-prim').addEventListener('click', runPrim);
+        document.getElementById('next-step-prim').addEventListener('click', function() {
+            if (window.nextStepPrim) {
+                window.nextStepPrim();
+            }
+        });
+        document.getElementById('run-kruskal').addEventListener('click', runKruskal);
+        document.getElementById('next-step-kruskal').addEventListener('click', function() {
+            if (window.nextStepKruskal) {
+                window.nextStepKruskal();
+            }
+        });
+        document.getElementById('reset-graph').addEventListener('click', resetGraph);
+        
+        // Tab switching
+        document.getElementById('tab-prim').addEventListener('click', function() {
+            document.getElementById('prim-controls').style.display = 'block';
+            document.getElementById('kruskal-controls').style.display = 'none';
+            document.getElementById('tab-prim').classList.add('active');
+            document.getElementById('tab-kruskal').classList.remove('active');
+        });
+        
+        document.getElementById('tab-kruskal').addEventListener('click', function() {
+            document.getElementById('prim-controls').style.display = 'none';
+            document.getElementById('kruskal-controls').style.display = 'block';
+            document.getElementById('tab-prim').classList.remove('active');
+            document.getElementById('tab-kruskal').classList.add('active');
+        });
+        
+        // Fungsi untuk menambahkan node
+        function addNode() {
+            if (isRunningAlgorithm) return;
+            
+            const nodeId = nodeIdInput.value.trim().toUpperCase();
+            if (!nodeId) {
+                alert('Masukkan ID node!');
+                return;
+            }
+            
+            if (nodes.some(n => n.id === nodeId)) {
+                alert('Node dengan ID ini sudah ada!');
+                return;
+            }
+            
+            // Posisi acak dalam container
+            const containerWidth = graphContainer.clientWidth - 40;
+            const containerHeight = graphContainer.clientHeight - 40;
+            const x = Math.max(20, Math.min(containerWidth, Math.random() * containerWidth));
+            const y = Math.max(20, Math.min(containerHeight, Math.random() * containerHeight));
+            
+            nodes.push({ id: nodeId, x, y });
+            updateNodeSelects();
+            renderGraph();
+            nodeIdInput.value = '';
+        }
+        
+        // Fungsi untuk menambahkan edge
+        function addEdge() {
+            if (isRunningAlgorithm) return;
+            
+            const fromNode = fromNodeSelect.value;
+            const toNode = toNodeSelect.value;
+            const weight = parseInt(edgeWeightInput.value);
+            
+            if (!fromNode || !toNode) {
+                alert('Pilih node asal dan tujuan!');
+                return;
+            }
+            
+            if (fromNode === toNode) {
+                alert('Node asal dan tujuan tidak boleh sama!');
+                return;
+            }
+            
+            if (isNaN(weight) || weight < 1) {
+                alert('Masukkan bobot yang valid (≥1)!');
+                return;
+            }
+            
+            // Cek apakah edge sudah ada
+            if (edges.some(e => 
+                (e.from === fromNode && e.to === toNode) || 
+                (e.from === toNode && e.to === fromNode))) {
+                alert('Edge antara node ini sudah ada!');
+                return;
+            }
+            
+            edges.push({ from: fromNode, to: toNode, weight });
+            renderGraph();
+        }
+        
+        // Fungsi untuk menjalankan algoritma Prim
+        function runPrim() {
+            if (isRunningAlgorithm) return;
+            
+            const startNode = startNodeSelect.value;
+            if (!startNode) {
+                alert('Pilih node awal!');
+                return;
+            }
+            
+            if (nodes.length < 2) {
+                alert('Graf harus memiliki minimal 2 node!');
+                return;
+            }
+            
+            isRunningAlgorithm = true;
+            mstEdges = [];
+            mstInfoDiv.innerHTML = '';
+            mstStepsDiv.innerHTML = '<h4>Langkah-langkah Prim:</h4>';
+            
+            // Implementasi algoritma Prim
+            const visited = new Set([startNode]);
+            const mst = [];
+            let totalWeight = 0;
+            let step = 1;
+            
+            // Fungsi untuk menemukan edge dengan bobot minimal yang terhubung ke node yang sudah dikunjungi
+            function findMinEdge() {
+                let minEdge = null;
+                let minWeight = Infinity;
+                
+                for (const edge of edges) {
+                    const hasFrom = visited.has(edge.from);
+                    const hasTo = visited.has(edge.to);
+                    
+                    // Edge yang menghubungkan visited dan unvisited
+                    if ((hasFrom && !hasTo) || (!hasFrom && hasTo)) {
+                        if (edge.weight < minWeight) {
+                            minWeight = edge.weight;
+                            minEdge = edge;
+                        }
+                    }
+                }
+                
+                return minEdge;
+            }
+            
+            // Deklarasikan nextStep sebagai variabel yang bisa diakses dari luar
+            window.nextStepPrim = function() {
+                const minEdge = findMinEdge();
+                
+                if (!minEdge) {
+                    // Selesai
+                    isRunningAlgorithm = false;
+                    mstInfoDiv.innerHTML = `<p>Total bobot MST (Prim): <strong>${totalWeight}</strong></p>`;
+                    // Nonaktifkan tombol next step setelah selesai
+                    document.getElementById('next-step-prim').disabled = true;
+                    document.getElementById('next-step-prim').style.backgroundColor = "#888";
+                    return;
+                }
+                
+                // Tentukan node yang belum dikunjungi
+                const newNode = visited.has(minEdge.from) ? minEdge.to : minEdge.from;
+                
+                // Tambahkan ke MST
+                mst.push(minEdge);
+                visited.add(newNode);
+                totalWeight += minEdge.weight;
+                
+                // Update visualisasi
+                mstEdges = [...mst];
+                renderGraph();
+                
+                // Tambahkan langkah ke log
+                mstStepsDiv.innerHTML += `<p>Langkah ${step++}: Tambahkan edge ${minEdge.from}-${minEdge.to} (bobot: ${minEdge.weight}), node terhubung: ${Array.from(visited).join(', ')}</p>`;
+                mstStepsDiv.scrollTop = mstStepsDiv.scrollHeight;
+            };
+            
+            // Aktifkan tombol next step
+            document.getElementById('next-step-prim').disabled = false;
+            document.getElementById('next-step-prim').style.backgroundColor = "#4CAF50";
+        }
+        
+        // Fungsi untuk menjalankan algoritma Kruskal
+        function runKruskal() {
+            if (isRunningAlgorithm) return;
+            
+            if (nodes.length < 2) {
+                alert('Graf harus memiliki minimal 2 node!');
+                return;
+            }
+            
+            isRunningAlgorithm = true;
+            mstEdges = [];
+            mstInfoDiv.innerHTML = '';
+            mstStepsDiv.innerHTML = '<h4>Langkah-langkah Kruskal:</h4>';
+            
+            // Implementasi algoritma Kruskal
+            const sortedEdges = [...edges].sort((a, b) => a.weight - b.weight);
+            const parent = {};
+            let totalWeight = 0;
+            let step = 1;
+            let edgeIndex = 0;
+            
+            // Inisialisasi parent untuk Union-Find
+            nodes.forEach(node => {
+                parent[node.id] = node.id;
+            });
+            
+            // Fungsi Find untuk Union-Find
+            function find(u) {
+                while (parent[u] !== u) {
+                    u = parent[u];
+                }
+                return u;
+            }
+            
+            // Fungsi Union untuk Union-Find
+            function union(u, v) {
+                const rootU = find(u);
+                const rootV = find(v);
+                if (rootU !== rootV) {
+                    parent[rootV] = rootU;
+                    return true;
+                }
+                return false;
+            }
+            
+            // Deklarasikan nextStep sebagai variabel yang bisa diakses dari luar
+            window.nextStepKruskal = function() {
+                if (edgeIndex >= sortedEdges.length) {
+                    // Selesai
+                    isRunningAlgorithm = false;
+                    mstInfoDiv.innerHTML = `<p>Total bobot MST (Kruskal): <strong>${totalWeight}</strong></p>`;
+                    // Nonaktifkan tombol next step setelah selesai
+                    document.getElementById('next-step-kruskal').disabled = true;
+                    document.getElementById('next-step-kruskal').style.backgroundColor = "#888";
+                    return;
+                }
+                
+                const edge = sortedEdges[edgeIndex++];
+                const from = edge.from;
+                const to = edge.to;
+                
+                // Coba tambahkan edge ke MST
+                if (union(from, to)) {
+                    // Edge ditambahkan ke MST
+                    mstEdges.push(edge);
+                    totalWeight += edge.weight;
+                    
+                    // Update visualisasi
+                    renderGraph();
+                    
+                    // Tambahkan langkah ke log
+                    mstStepsDiv.innerHTML += `<p>Langkah ${step++}: Tambahkan edge ${edge.from}-${edge.to} (bobot: ${edge.weight}), total bobot: ${totalWeight}</p>`;
+                } else {
+                    // Edge membentuk siklus, dilewati
+                    mstStepsDiv.innerHTML += `<p>Langkah ${step++}: Lewati edge ${edge.from}-${edge.to} (bobot: ${edge.weight}) karena membentuk siklus</p>`;
+                }
+                
+                mstStepsDiv.scrollTop = mstStepsDiv.scrollHeight;
+            };
+            
+            // Aktifkan tombol next step
+            document.getElementById('next-step-kruskal').disabled = false;
+            document.getElementById('next-step-kruskal').style.backgroundColor = "#4CAF50";
+        }
+        
+        // Fungsi untuk merender graf
+        function renderGraph() {
+            graphContainer.innerHTML = '';
+            
+            // Render edges
+            edges.forEach(edge => {
+                const fromNode = nodes.find(n => n.id === edge.from);
+                const toNode = nodes.find(n => n.id === edge.to);
+                
+                if (!fromNode || !toNode) return;
+                
+                const isMST = mstEdges.some(e => 
+                    (e.from === edge.from && e.to === edge.to) || 
+                    (e.from === edge.to && e.to === edge.from));
+                
+                const edgeElement = document.createElement('div');
+                edgeElement.className = `edge ${isMST ? 'mst-edge' : ''}`;
+                
+                const dx = toNode.x - fromNode.x;
+                const dy = toNode.y - fromNode.y;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                
+                edgeElement.style.width = `${length}px`;
+                edgeElement.style.left = `${fromNode.x + 15}px`;
+                edgeElement.style.top = `${fromNode.y + 15}px`;
+                edgeElement.style.transform = `rotate(${angle}deg)`;
+                
+                // Label bobot
+                const label = document.createElement('div');
+                label.className = 'edge-label';
+                label.textContent = edge.weight;
+                label.style.left = `${fromNode.x + dx/2 - 10}px`;
+                label.style.top = `${fromNode.y + dy/2 - 10}px`;
+                
+                graphContainer.appendChild(edgeElement);
+                graphContainer.appendChild(label);
+            });
+            
+            // Render nodes
+            nodes.forEach(node => {
+                const nodeElement = document.createElement('div');
+                nodeElement.className = 'node';
+                nodeElement.textContent = node.id;
+                nodeElement.style.left = `${node.x}px`;
+                nodeElement.style.top = `${node.y}px`;
+                
+                // Drag functionality
+                let isDragging = false;
+                let offsetX, offsetY;
+                
+                nodeElement.addEventListener('mousedown', (e) => {
+                    if (isRunningAlgorithm) return;
+                    
+                    isDragging = true;
+                    offsetX = e.clientX - nodeElement.getBoundingClientRect().left;
+                    offsetY = e.clientY - nodeElement.getBoundingClientRect().top;
+                    nodeElement.style.cursor = 'grabbing';
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging || isRunningAlgorithm) return;
+                    
+                    const containerRect = graphContainer.getBoundingClientRect();
+                    let x = e.clientX - containerRect.left - offsetX;
+                    let y = e.clientY - containerRect.top - offsetY;
+                    
+                    // Boundary check
+                    x = Math.max(0, Math.min(containerRect.width - 30, x));
+                    y = Math.max(0, Math.min(containerRect.height - 30, y));
+                    
+                    nodeElement.style.left = `${x}px`;
+                    nodeElement.style.top = `${y}px`;
+                    
+                    // Update node position
+                    const nodeIndex = nodes.findIndex(n => n.id === node.id);
+                    if (nodeIndex !== -1) {
+                        nodes[nodeIndex].x = x;
+                        nodes[nodeIndex].y = y;
+                    }
+                    
+                    renderGraph();
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    nodeElement.style.cursor = 'move';
+                });
+                
+                graphContainer.appendChild(nodeElement);
+            });
+        }
+        
+        // Fungsi untuk update dropdown node
+        function updateNodeSelects() {
+            fromNodeSelect.innerHTML = '';
+            toNodeSelect.innerHTML = '';
+            startNodeSelect.innerHTML = '';
+            
+            nodes.forEach(node => {
+                const option = document.createElement('option');
+                option.value = node.id;
+                option.textContent = node.id;
+                
+                fromNodeSelect.appendChild(option.cloneNode(true));
+                toNodeSelect.appendChild(option.cloneNode(true));
+                startNodeSelect.appendChild(option.cloneNode(true));
+            });
+        }
+        
+        // Fungsi untuk reset graf
+        function resetGraph() {
+            if (isRunningAlgorithm) return;
+            
+            nodes = [];
+            edges = [];
+            mstEdges = [];
+            nodeCounter = 0;
+            mstInfoDiv.innerHTML = '';
+            mstStepsDiv.innerHTML = '';
+            renderGraph();
+            updateNodeSelects();
+            
+            // Reset tombol next step
+            document.getElementById('next-step-prim').disabled = true;
+            document.getElementById('next-step-prim').style.backgroundColor = "#888";
+            document.getElementById('next-step-kruskal').disabled = true;
+            document.getElementById('next-step-kruskal').style.backgroundColor = "#888";
+        }
+        
+        // Inisialisasi dengan beberapa node contoh
+        function initExample() {
+            nodes = [
+                { id: 'A', x: 100, y: 100 },
+                { id: 'B', x: 300, y: 100 },
+                { id: 'C', x: 100, y: 300 },
+                { id: 'D', x: 300, y: 300 }
+            ];
+            
+            edges = [
+                { from: 'A', to: 'B', weight: 4 },
+                { from: 'A', to: 'C', weight: 2 },
+                { from: 'B', to: 'C', weight: 1 },
+                { from: 'B', to: 'D', weight: 5 },
+                { from: 'C', to: 'D', weight: 8 }
+            ];
+            
+            updateNodeSelects();
+            renderGraph();
+        }
+        
+        // Jalankan contoh saat pertama kali load
+        initExample();
+    </script>
+</body>
+</html>
