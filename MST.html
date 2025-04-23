@@ -601,18 +601,18 @@
         // Inisialisasi dengan beberapa node contoh
         function initExample() {
             nodes = [
-                { id: 'A', x: 100, y: 100 },
-                { id: 'B', x: 300, y: 100 },
-                { id: 'C', x: 100, y: 300 },
-                { id: 'D', x: 300, y: 300 }
+                { id: 'A', x: 120, y: 100 },
+                { id: 'B', x: 300, y: 90 },
+                { id: 'C', x: 250, y: 350 },
+                { id: 'D', x: 600, y: 350 }
             ];
-            
+        
             edges = [
-                { from: 'A', to: 'B', weight: 4 },
-                { from: 'A', to: 'C', weight: 2 },
-                { from: 'B', to: 'C', weight: 1 },
+                { from: 'A', to: 'B', weight: 2 },
+                { from: 'A', to: 'C', weight: 3 },
+                { from: 'B', to: 'C', weight: 4 },
                 { from: 'B', to: 'D', weight: 5 },
-                { from: 'C', to: 'D', weight: 8 }
+                { from: 'C', to: 'D', weight: 6 }
             ];
             
             updateNodeSelects();
